@@ -1,0 +1,763 @@
+{
+  "name": "Fabric Superagent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1760,
+        -260
+      ],
+      "id": "ff20971e-ddc8-45ec-a530-511cf169c946",
+      "name": "When chat message received",
+      "webhookId": "7ec6f29a-2463-4bd0-233d-75d61230f5fc"
+    },
+    {
+      "parameters": {
+        "operation": "clone",
+        "repositoryPath": "={{ $json.git_directory }}",
+        "sourceRepository": "https://github.com/danielmiessler/fabric.git"
+      },
+      "type": "n8n-nodes-base.git",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        -440
+      ],
+      "id": "576e5457-7c84-439a-a41b-261b730132f7",
+      "name": "Clone fabric git",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2f090819-692c-4f18-818d-5084726b6e10",
+              "name": "git_directory",
+              "value": "/data/shared/fabric",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        -160
+      ],
+      "id": "325628b6-a139-41d4-bc8e-227562a06d27",
+      "name": "set git path"
+    },
+    {
+      "parameters": {
+        "command": "=ls {{ $('set git path').item.json.git_directory }}/patterns "
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        20
+      ],
+      "id": "978477f6-4476-4393-96fe-0867f046260a",
+      "name": "get available prompts"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        -440
+      ],
+      "id": "60101d20-7064-43e6-9f3f-18b313d6bb58",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input Data (replace with the actual data input in n8n)\nconst inputString = $json[\"stdout\"];\n\n// Split the input string into lines\nconst lines = inputString.split('\\n').map(line => line.trim());\n\n// Return the list as a single item with a \"patterns\" property\nreturn [{ patterns: lines }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        20
+      ],
+      "id": "8e983474-c877-4598-a80c-c3513db674da",
+      "name": "transform pattern list to json"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d9af1ea9-f959-4fb5-8a5f-0a0714b11c77",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        20
+      ],
+      "id": "8e3844ba-2b96-4eb7-9146-3aa15afae1fb",
+      "name": "chatInput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2f090819-692c-4f18-818d-5084726b6e10",
+              "name": "git_directory",
+              "value": "/data/shared/fabric",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        -340
+      ],
+      "id": "c620c65d-7fe5-4ac6-97ae-e3b662f641b3",
+      "name": "set git path1"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:14b",
+        "options": {
+          "numCtx": 6048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        80,
+        620
+      ],
+      "id": "d893978c-05af-4a43-88d0-8711c90a8eb1",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Fk6I63GEb9n6IFQI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('cut first 100 characters').item.json.truncatedText }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are highly intelligent and accurate sentiment analyzer. Analyze the sentiment of the provided text. Categorize it into one of the following: {{ $json.patterns }}. Use the provided formatting instructions. Only output the JSON. You are only allowed to select a category from the prrovided list."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        320,
+        20
+      ],
+      "id": "b7baf8b4-1932-4c9c-8d58-a5f4b00eb9b2",
+      "name": "decide what pattern should be used"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input Data (replace with the actual data input in n8n)\nconst inputString = $json[\"text\"];\n\n// Log the raw input to check its structure\nconsole.log(\"Raw Input String:\", inputString);\n\n// Clean and parse the string into a valid JSON object\nlet cleanedString = inputString.replace(/\\\\n/g, ''); // Remove escape sequences like \\n\nlet parsedJson;\n\ntry {\n    // Parse the cleaned string into JSON\n    parsedJson = JSON.parse(cleanedString.trim());\n    console.log(\"Parsed JSON:\", parsedJson); // Log the parsed JSON\n} catch (error) {\n    throw new Error(`Failed to parse JSON: ${error.message}`);\n}\n\n// Ensure parsedJson is an object and get the first key-value pair\nif (typeof parsedJson === 'object' && parsedJson !== null) {\n    const firstKey = Object.keys(parsedJson)[0]; // Get the first key\n    const firstValue = firstKey ? parsedJson[firstKey] : null; // Get the value of the first key\n\n    // Return the first value\n    return [\n        {\n            json: {\n                value: firstValue,\n            },\n        },\n    ];\n} else {\n    throw new Error(\"Input JSON is not a valid object.\");\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        20
+      ],
+      "id": "6300fe31-a6d9-428d-bcb4-c5772c21e45f",
+      "name": "extract_pattern"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node\nreturn items.map(item => {\n    // Get the input text\n    const inputText = item.json.message || '';\n    \n    // Cut the text to the first 100 characters\n    const truncatedText = inputText.substring(0, 100);\n    \n    // Return the truncated text\n    return {\n        json: {\n            truncatedText,\n        },\n    };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        20
+      ],
+      "id": "d4519b15-9023-4c00-aa72-f6359ba00792",
+      "name": "cut first 100 characters"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5-coder:14b",
+        "options": {
+          "numCtx": 6000,
+          "numPredict": 500
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        620
+      ],
+      "id": "0bcbc30b-6cd9-49fd-9535-c6a9ba0ee8e6",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Fk6I63GEb9n6IFQI",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=cat {{ $('set git path').item.json.git_directory }}/patterns/{{ $json.value }}/system.md"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        920,
+        20
+      ],
+      "id": "4d9890a7-9bed-419a-97b5-31059f8ec7ff",
+      "name": "get_selected_pattern_system_prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "18b7c3b4-8581-44ca-a75e-324b4c7db6a5",
+              "name": "system_prompt",
+              "value": "={{ $json.stdout }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        160
+      ],
+      "id": "c332c441-82fd-4653-8dd2-57d6278831b4",
+      "name": "set_system_prompt"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('chatInput').item.json.message }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $json.system_prompt }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -960,
+        440
+      ],
+      "id": "478103ed-bae9-4740-9864-f67957b88e0e",
+      "name": "Run chatInput with specialized tool"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        280
+      ],
+      "id": "2d4a2298-ae5b-42b5-ba5b-fdf6dc23803c",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bc60d582-6cc8-47f0-930c-28554c153a6f",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        20
+      ],
+      "id": "eb44fee8-0eb2-4e16-8268-1a8702ac4cec",
+      "name": "Webhook",
+      "webhookId": "bc60d582-6cc8-47f0-930c-28554c153a6f",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "He1380gwknDg4QOC",
+          "name": "Header Auth openwebui Study Space"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "735071c2-0c9b-4c29-bdc7-8af6f9a2bf74",
+              "name": "chatInput",
+              "value": "={{ $json.body.query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1600,
+        20
+      ],
+      "id": "3b1b6389-f1fa-4ea0-85b0-826457e6fbec",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "735071c2-0c9b-4c29-bdc7-8af6f9a2bf74",
+              "name": "chatInput",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1600,
+        280
+      ],
+      "id": "222eafe1-6465-4387-aa85-f0aa04ef9646",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bf569bc-9c4a-471c-a9c7-0fb0d660de4f",
+              "name": "output",
+              "value": "=Based on the Request: {{ $('cut first 100 characters').item.json.truncatedText }}\n\nI decided to use the tool \"{{ $('extract_pattern').item.json.value }}\"\n\nThis is the Result:\n{{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -600,
+        440
+      ],
+      "id": "9b8801ec-1a2f-4638-8aac-c5f323ad3786",
+      "name": "set output"
+    },
+    {
+      "parameters": {
+        "content": "## Run for setup once, \nand again if you want to update the available prompts from the fabric git. \n\n### Make sure to set git path in both nodes in this box!\n\n(You may need to set directory permissions manually.)",
+        "height": 620,
+        "width": 660,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        -640
+      ],
+      "id": "0c8aa871-4b01-4a55-9e43-7a4cdef07d7f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## To be called via Open Webui for example",
+        "height": 140,
+        "width": 260,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2060,
+        20
+      ],
+      "id": "1c7bfc7d-aff6-491e-9109-c5ec3bb0fbf3",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## To be called via n8n\n",
+        "height": 140,
+        "width": 260
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2060,
+        280
+      ],
+      "id": "d06eb73b-b45e-47bb-9757-f8af7d3e8e51",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## To be called via integrated Chat\n",
+        "height": 140,
+        "width": 260,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2060,
+        -260
+      ],
+      "id": "7a1c257e-9713-4337-ad73-98a139bc3362",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## This is basically sentiment analysis but with the available categories as dynamic variables.",
+        "height": 360,
+        "width": 320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        280,
+        -180
+      ],
+      "id": "a2c0dd79-76ff-466b-94ec-eb9174ac0840",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Tipp:\nDepending on Model and Hardware you should experiment with context limit and max token lenth for respond to fin etune",
+        "height": 280,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        460
+      ],
+      "id": "23953b12-1d0d-4c3f-b510-70a794fe008f",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "# This is a smart selecting Multi-Tool-Agent / Masteragent based on fabric\n\n## it decides what tool to use based on the first 100 characters of the prompt. All tools/patterns/prompts from the fabric repository are imported.\n\nSetup needs to be done manually via clicking \"Test workflow\". You may need to adjust directory and or permissions.\n\n\nList of available prompts:\nhttps://github.com/danielmiessler/fabric/tree/main/patterns\n\nGithub Repository of fabric:\nhttps://github.com/danielmiessler/fabric",
+        "height": 340,
+        "width": 2780
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        -1080
+      ],
+      "id": "f471a452-501b-4458-b35e-0569368e5c9e",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "10.0.44.87:5678",
+            "user-agent": "python-requests/2.32.3",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "connection": "keep-alive",
+            "authorization": "Bearer 4398rhgeuofnvoiwe",
+            "content-type": "application/json",
+            "content-length": "176"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "sessionId": "a9507188-8872-4d72-8705-7553273e6c77 - I want to write an essay about a sailboat and the journey of life",
+            "chatInput": "I want to write an essay about my life"
+          },
+          "webhookUrl": "http://localhost:5678/webhook/bc60d582-6cc8-47f0-930c-28554c153a6f",
+          "executionMode": "production"
+        }
+      }
+    ],
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "message": " I want to write an essay about a sailboat and the journey of life \n"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "chatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clone fabric git": {
+      "main": [
+        []
+      ]
+    },
+    "set git path": {
+      "main": [
+        [
+          {
+            "node": "get available prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "set git path1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get available prompts": {
+      "main": [
+        [
+          {
+            "node": "transform pattern list to json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chatInput": {
+      "main": [
+        [
+          {
+            "node": "cut first 100 characters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set git path1": {
+      "main": [
+        [
+          {
+            "node": "Clone fabric git",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transform pattern list to json": {
+      "main": [
+        [
+          {
+            "node": "decide what pattern should be used",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "decide what pattern should be used",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "decide what pattern should be used": {
+      "main": [
+        [
+          {
+            "node": "extract_pattern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cut first 100 characters": {
+      "main": [
+        [
+          {
+            "node": "set git path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_pattern": {
+      "main": [
+        [
+          {
+            "node": "get_selected_pattern_system_prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Run chatInput with specialized tool",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_selected_pattern_system_prompt": {
+      "main": [
+        [
+          {
+            "node": "set_system_prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_system_prompt": {
+      "main": [
+        [
+          {
+            "node": "Run chatInput with specialized tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "chatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "chatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run chatInput with specialized tool": {
+      "main": [
+        [
+          {
+            "node": "set output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5d0c560e-2055-4f78-a56f-00a9cfbc9bad",
+  "meta": {
+    "instanceId": "cb5f7172572cb80191af8d615ce1e9af428ff72cbb1a71b030067bf50bcfd2a6"
+  },
+  "id": "djlViG6Eyomls71l",
+  "tags": []
+}
